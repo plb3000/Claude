@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from './constants/colors';
 import TodayScreen from './app/TodayScreen';
 import SearchScreen from './app/SearchScreen';
@@ -21,6 +22,7 @@ function TabIcon({ label, focused }) {
 
 export default function App() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
       <StatusBar style="light" backgroundColor={Colors.background} />
       <Tab.Navigator
@@ -84,5 +86,6 @@ export default function App() {
         />
       </Tab.Navigator>
     </NavigationContainer>
+    </GestureHandlerRootView>
   );
 }

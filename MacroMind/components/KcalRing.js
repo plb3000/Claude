@@ -8,15 +8,12 @@ export default function KcalRing({ consumed, goal }) {
   const strokeWidth = 12;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
+  const ratio = goal > 0 ? consumed / goal : 0;
+  const progress = Math.min(ratio, 1);
   const strokeDashoffset = circumference * (1 - progress);
 
   const color =
-    consumed > goal
-      ? Colors.danger
-      : consumed / goal > 0.85
-      ? Colors.warning
-      : Colors.primary;
+    ratio > 1 ? Colors.danger : ratio > 0.85 ? Colors.warning : Colors.primary;
 
   return (
     <View style={styles.container}>

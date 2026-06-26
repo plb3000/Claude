@@ -3,13 +3,10 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Colors } from '../constants/colors';
 
 export default function MacroBar({ label, consumed, goal, unit = 'g' }) {
-  const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
+  const ratio = goal > 0 ? consumed / goal : 0;
+  const progress = Math.min(ratio, 1);
   const color =
-    consumed > goal
-      ? Colors.danger
-      : consumed / goal > 0.85
-      ? Colors.warning
-      : Colors.primary;
+    ratio > 1 ? Colors.danger : ratio > 0.85 ? Colors.warning : Colors.primary;
 
   return (
     <View style={styles.container}>

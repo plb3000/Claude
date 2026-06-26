@@ -16,43 +16,58 @@ function formatDate(dateStr) {
   return new Date(y, m - 1, d).toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+function shiftDate(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  const ny = dt.getFullYear();
+  const nm = String(dt.getMonth() + 1).padStart(2, '0');
+  const nd = String(dt.getDate()).padStart(2, '0');
+  return `${ny}-${nm}-${nd}`;
+}
+
 function sumMacro(items, key) {
   return items.reduce((acc, item) => acc + (item[key] ?? 0), 0);
 }
 
 export default function TodayScreen({ navigation }) {
   const today = getLocalDateString();
+  const [selectedDate, setSelectedDate] = useState(today);
   const [entries, setEntries] = useState([]);
   const [goals, setGoals] = useState({ kcal: 2000, protein_g: 150, fat_g: 70, carbs_g: 250 });
   const [refreshing, setRefreshing] = useState(false);
 
-  async function load() {
-    const [data, g] = await Promise.all([getFoodLogByDate(today), getGoals()]);
+  const load = useCallback(async (date) => {
+    const [data, g] = await Promise.all([getFoodLogByDate(date), getGoals()]);
     setEntries(data);
     setGoals(g);
-  }
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [])
+      load(selectedDate);
+    }, [selectedDate, load])
   );
 
   async function onRefresh() {
     setRefreshing(true);
-    await load();
+    await load(selectedDate);
     setRefreshing(false);
   }
 
   async function handleDelete(id) {
     await deleteFoodEntry(id);
-    await load();
+    await load(selectedDate);
   }
+
+  const isToday = selectedDate === today;
+  const isFuture = selectedDate >= today;
 
   const totalKcal = sumMacro(entries, 'kcal');
   const totalProtein = sumMacro(entries, 'protein');
   const totalFat = sumMacro(entries, 'fat');
   const totalCarbs = sumMacro(entries, 'carbs');
+  const remaining = goals.kcal - totalKcal;
 
   const hasMicros = entries.some(
     (e) => e.vitamin_a != null || e.vitamin_c != null || e.vitamin_d != null
@@ -76,10 +91,37 @@ export default function TodayScreen({ navigation }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        <Text style={styles.dateText}>{formatDate(today)}</Text>
+        <View style={styles.dateNav}>
+          <TouchableOpacity
+            style={styles.dateArrow}
+            onPress={() => setSelectedDate((d) => shiftDate(d, -1))}
+          >
+            <Text style={styles.dateArrowText}>‹</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.dateCenter}
+            onPress={() => setSelectedDate(today)}
+            disabled={isToday}
+          >
+            <Text style={styles.dateText}>{isToday ? 'Heute' : formatDate(selectedDate)}</Text>
+            {!isToday && <Text style={styles.dateReset}>Zu heute springen</Text>}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.dateArrow, isFuture && styles.dateArrowDisabled]}
+            onPress={() => setSelectedDate((d) => shiftDate(d, 1))}
+            disabled={isFuture}
+          >
+            <Text style={[styles.dateArrowText, isFuture && styles.dateArrowTextDisabled]}>›</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.ringRow}>
           <KcalRing consumed={totalKcal} goal={goals.kcal} />
+          <Text style={styles.remainingText}>
+            {remaining >= 0
+              ? `Noch ${Math.round(remaining)} kcal übrig`
+              : `${Math.round(-remaining)} kcal über dem Ziel`}
+          </Text>
         </View>
 
         <View style={styles.card}>
@@ -90,13 +132,19 @@ export default function TodayScreen({ navigation }) {
 
         {MEALS.map((meal) => {
           const mealEntries = entries.filter((e) => e.meal === meal);
+          const mealKcal = sumMacro(mealEntries, 'kcal');
           return (
             <View key={meal} style={styles.mealSection}>
               <View style={styles.mealHeader}>
-                <Text style={styles.mealTitle}>{MEAL_LABELS[meal]}</Text>
+                <View style={styles.mealTitleRow}>
+                  <Text style={styles.mealTitle}>{MEAL_LABELS[meal]}</Text>
+                  {mealKcal > 0 && (
+                    <Text style={styles.mealKcal}>{Math.round(mealKcal)} kcal</Text>
+                  )}
+                </View>
                 <TouchableOpacity
                   style={styles.addBtn}
-                  onPress={() => navigation.navigate('Search', { meal })}
+                  onPress={() => navigation.navigate('Search', { meal, date: selectedDate })}
                 >
                   <Text style={styles.addBtnText}>+</Text>
                 </TouchableOpacity>
@@ -114,7 +162,7 @@ export default function TodayScreen({ navigation }) {
 
         {hasMicros && (
           <View style={styles.microRow}>
-            <Text style={styles.microLabel}>Mikronährstoffe heute: </Text>
+            <Text style={styles.microLabel}>Mikronährstoffe: </Text>
             <Text style={styles.microValue}>{microSummary()}</Text>
           </View>
         )}
@@ -132,15 +180,57 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 32,
   },
-  dateText: {
-    color: Colors.textSecondary,
-    fontSize: 14,
+  dateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  dateArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateArrowDisabled: {
+    opacity: 0.3,
+  },
+  dateArrowText: {
+    color: Colors.textPrimary,
+    fontSize: 24,
+    lineHeight: 26,
+    fontWeight: '600',
+  },
+  dateArrowTextDisabled: {
+    color: Colors.textSecondary,
+  },
+  dateCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateText: {
+    color: Colors.textPrimary,
+    fontSize: 16,
+    fontWeight: '600',
     textTransform: 'capitalize',
+  },
+  dateReset: {
+    color: Colors.primary,
+    fontSize: 11,
+    marginTop: 2,
   },
   ringRow: {
     alignItems: 'center',
     marginBottom: 20,
+  },
+  remainingText: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginTop: 10,
   },
   card: {
     backgroundColor: Colors.surface,
@@ -159,10 +249,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  mealTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
   mealTitle: {
     color: Colors.textPrimary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  mealKcal: {
+    color: Colors.textSecondary,
+    fontSize: 13,
   },
   addBtn: {
     width: 28,

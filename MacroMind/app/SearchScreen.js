@@ -34,7 +34,7 @@ function scaleNutrients(nutriments, amount_g) {
   };
 }
 
-function ProductAddForm({ product, initialMeal, onAdded, onCancel }) {
+function ProductAddForm({ product, initialMeal, targetDate, onAdded, onCancel }) {
   const [amount, setAmount] = useState('100');
   const [meal, setMeal] = useState(initialMeal || 'breakfast');
   const [manualFields, setManualFields] = useState({});
@@ -54,7 +54,7 @@ function ProductAddForm({ product, initialMeal, onAdded, onCancel }) {
     setAdding(true);
     try {
       const entry = {
-        date: getLocalDateString(),
+        date: targetDate || getLocalDateString(),
         meal,
         product_name: product?.product_name || manualFields.product_name || 'Unbekannt',
         brand: product?.brand || '',
@@ -186,6 +186,7 @@ function ProductAddForm({ product, initialMeal, onAdded, onCancel }) {
 
 export default function SearchScreen({ navigation, route }) {
   const initialMeal = route.params?.meal || 'breakfast';
+  const targetDate = route.params?.date || getLocalDateString();
   const [permission, requestPermission] = useCameraPermissions();
   const [mode, setMode] = useState('scanner'); // 'scanner' | 'search' | 'manual'
   const [scanning, setScanning] = useState(true);
@@ -259,6 +260,7 @@ export default function SearchScreen({ navigation, route }) {
         <ProductAddForm
           product={mode === 'manual' ? null : product}
           initialMeal={initialMeal}
+          targetDate={targetDate}
           onAdded={handleAdded}
           onCancel={handleCancel}
         />

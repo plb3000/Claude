@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
 import { getGoals, updateGoals } from '../db/database';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 export default function SettingsScreen() {
   const [goals, setGoals] = useState({ kcal: '2000', protein_g: '150', fat_g: '70', carbs_g: '250' });
