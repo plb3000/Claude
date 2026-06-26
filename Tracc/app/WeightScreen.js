@@ -11,6 +11,16 @@ import { getWeightLast30Days, upsertWeight, getLocalDateString } from '../db/dat
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
+function shiftDate(dateStr, days) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + days);
+  const ny = dt.getFullYear();
+  const nm = String(dt.getMonth() + 1).padStart(2, '0');
+  const nd = String(dt.getDate()).padStart(2, '0');
+  return `${ny}-${nm}-${nd}`;
+}
+
 export default function WeightScreen() {
   const [entries, setEntries] = useState([]);
   const [input, setInput] = useState('');
@@ -44,6 +54,12 @@ export default function WeightScreen() {
   const minW = hasData ? Math.min(...weights) : 0;
   const maxW = hasData ? Math.max(...weights) : 0;
   const currentW = hasData ? weights[weights.length - 1] : null;
+
+  // 7-day trend: compare current weight to the earliest entry within the last 7 days.
+  const weekAgo = shiftDate(today, -7);
+  const recentEntries = entries.filter((e) => e.date >= weekAgo);
+  const trendBase = recentEntries.length > 1 ? recentEntries[0].weight_kg : null;
+  const trend = trendBase != null && currentW != null ? currentW - trendBase : null;
 
   const chartData = {
     labels: entries.map((e) => {
@@ -99,6 +115,15 @@ export default function WeightScreen() {
                 <Text style={styles.statValue}>{maxW.toFixed(1)} kg</Text>
               </View>
             </View>
+
+            {trend != null && (
+              <View style={styles.trendRow}>
+                <Text style={styles.trendLabel}>7-Tage-Trend</Text>
+                <Text style={styles.trendValue}>
+                  {trend > 0 ? '↑' : trend < 0 ? '↓' : '→'} {Math.abs(trend).toFixed(1)} kg
+                </Text>
+              </View>
+            )}
 
             <View style={styles.chartContainer}>
               <Text style={styles.chartTitle}>Letzte 30 Tage</Text>
@@ -195,6 +220,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 16,
+  },
+  trendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  trendLabel: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+  },
+  trendValue: {
+    color: Colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
   },
   statItem: {
     flex: 1,

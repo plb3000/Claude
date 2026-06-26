@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
 import { getGoals, updateGoals } from '../db/database';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 export default function SettingsScreen() {
   const [goals, setGoals] = useState({ kcal: '2000', protein_g: '150', fat_g: '70', carbs_g: '250' });
@@ -74,6 +74,24 @@ export default function SettingsScreen() {
           <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
             <Text style={styles.saveBtnText}>{saved ? 'Gespeichert ✓' : 'Ziele speichern'}</Text>
           </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Bedienung</Text>
+        <View style={styles.card}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Eintrag bearbeiten</Text>
+            <Text style={styles.infoValue}>nach rechts wischen</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Eintrag löschen</Text>
+            <Text style={styles.infoValue}>nach links wischen</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Mikronährstoffe</Text>
+            <Text style={styles.infoValue}>Eintrag antippen</Text>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>App-Info</Text>

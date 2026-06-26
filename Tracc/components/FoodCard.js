@@ -4,7 +4,7 @@ import { Swipeable } from 'react-native-gesture-handler';
 import { Colors } from '../constants/colors';
 import MicroDetail from './MicroDetail';
 
-export default function FoodCard({ item, onDelete }) {
+export default function FoodCard({ item, onDelete, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const swipeRef = useRef(null);
 
@@ -13,6 +13,11 @@ export default function FoodCard({ item, onDelete }) {
       { text: 'Abbrechen', style: 'cancel', onPress: () => swipeRef.current?.close() },
       { text: 'Löschen', style: 'destructive', onPress: () => onDelete(item.id) },
     ]);
+  }
+
+  function handleEdit() {
+    swipeRef.current?.close();
+    onEdit?.(item);
   }
 
   function renderRightActions(progress, dragX) {
@@ -28,11 +33,26 @@ export default function FoodCard({ item, onDelete }) {
     );
   }
 
+  function renderLeftActions(progress, dragX) {
+    const scale = dragX.interpolate({
+      inputRange: [0, 80],
+      outputRange: [0.6, 1],
+      extrapolate: 'clamp',
+    });
+    return (
+      <TouchableOpacity style={styles.editAction} onPress={handleEdit} activeOpacity={0.8}>
+        <Animated.Text style={[styles.editText, { transform: [{ scale }] }]}>Bearbeiten</Animated.Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <Swipeable
       ref={swipeRef}
       renderRightActions={renderRightActions}
+      renderLeftActions={onEdit ? renderLeftActions : undefined}
       overshootRight={false}
+      overshootLeft={false}
       containerStyle={styles.swipeContainer}
     >
       <View style={styles.card}>
@@ -79,6 +99,19 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     color: Colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  editAction: {
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 96,
+    borderRadius: 8,
+    marginRight: 6,
+  },
+  editText: {
+    color: Colors.background,
     fontWeight: '700',
     fontSize: 13,
   },

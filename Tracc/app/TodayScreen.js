@@ -1,12 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, StatusBar,
+  RefreshControl, StatusBar, Modal, TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from '../constants/colors';
 import { MEAL_LABELS, MEALS } from '../constants/units';
-import { getFoodLogByDate, deleteFoodEntry, getGoals, getLocalDateString } from '../db/database';
+import {
+  getFoodLogByDate, deleteFoodEntry, updateFoodEntryAmount,
+  getGoals, getLocalDateString,
+} from '../db/database';
 import KcalRing from '../components/KcalRing';
 import MacroBar from '../components/MacroBar';
 import FoodCard from '../components/FoodCard';
@@ -36,6 +39,8 @@ export default function TodayScreen({ navigation }) {
   const [entries, setEntries] = useState([]);
   const [goals, setGoals] = useState({ kcal: 2000, protein_g: 150, fat_g: 70, carbs_g: 250 });
   const [refreshing, setRefreshing] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [editAmount, setEditAmount] = useState('');
 
   const load = useCallback(async (date) => {
     const [data, g] = await Promise.all([getFoodLogByDate(date), getGoals()]);
@@ -53,6 +58,20 @@ export default function TodayScreen({ navigation }) {
     setRefreshing(true);
     await load(selectedDate);
     setRefreshing(false);
+  }
+
+  function handleEditOpen(item) {
+    setEditItem(item);
+    setEditAmount(String(item.amount_g ?? ''));
+  }
+
+  async function handleEditSave() {
+    const val = parseFloat(String(editAmount).replace(',', '.'));
+    if (editItem && !isNaN(val) && val > 0) {
+      await updateFoodEntryAmount(editItem.id, Math.round(val));
+      await load(selectedDate);
+    }
+    setEditItem(null);
   }
 
   async function handleDelete(id) {
@@ -153,7 +172,7 @@ export default function TodayScreen({ navigation }) {
                 <Text style={styles.emptyMeal}>Noch nichts eingetragen</Text>
               ) : (
                 mealEntries.map((item) => (
-                  <FoodCard key={item.id} item={item} onDelete={handleDelete} />
+                  <FoodCard key={item.id} item={item} onDelete={handleDelete} onEdit={handleEditOpen} />
                 ))
               )}
             </View>
@@ -167,6 +186,38 @@ export default function TodayScreen({ navigation }) {
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={!!editItem}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditItem(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle} numberOfLines={1}>{editItem?.product_name}</Text>
+            <Text style={styles.modalHint}>Menge anpassen — Nährwerte werden neu berechnet.</Text>
+            <Text style={styles.modalLabel}>Menge (g)</Text>
+            <TextInput
+              style={styles.modalInput}
+              keyboardType="numeric"
+              value={editAmount}
+              onChangeText={setEditAmount}
+              autoFocus
+              selectTextOnFocus
+              placeholderTextColor={Colors.textSecondary}
+            />
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setEditItem(null)}>
+                <Text style={styles.modalCancelText}>Abbrechen</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSave} onPress={handleEditSave}>
+                <Text style={styles.modalSaveText}>Speichern</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -300,5 +351,74 @@ const styles = StyleSheet.create({
   microValue: {
     color: Colors.textPrimary,
     fontSize: 13,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalTitle: {
+    color: Colors.textPrimary,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  modalHint: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginTop: 6,
+    marginBottom: 12,
+  },
+  modalLabel: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 6,
+  },
+  modalInput: {
+    backgroundColor: Colors.background,
+    borderRadius: 8,
+    padding: 12,
+    color: Colors.textPrimary,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    fontSize: 16,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  modalCancel: {
+    flex: 1,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  modalCancelText: {
+    color: Colors.textSecondary,
+    fontSize: 15,
+  },
+  modalSave: {
+    flex: 1,
+    borderRadius: 10,
+    padding: 14,
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+  },
+  modalSaveText: {
+    color: Colors.background,
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] – 2026-06-26
+
+### Geändert
+- **App umbenannt von „MacroMind" in „Tracc"** (App-Name, Slug, Paketname, lokale Datenbank `tracc.db`).
+
+### Hinzugefügt
+- **Eintrag bearbeiten**: Nach rechts wischen → grüner „Bearbeiten"-Button öffnet einen Dialog zum Anpassen der Menge. Alle Nährwerte werden proportional neu berechnet.
+- **7-Tage-Trend** im Gewicht-Tab: zeigt die Veränderung gegenüber dem ältesten Eintrag der letzten 7 Tage (↑/↓ kg).
+- **Bedienhinweise** im Einstellungen-Tab (Swipe-Gesten & Antippen erklärt).
+
 ## [1.1.0] – 2026-06-26
 
 ### Hinzugefügt

@@ -5,7 +5,7 @@ let db;
 
 export async function getDb() {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('macromind.db');
+    db = await SQLite.openDatabaseAsync('tracc.db');
     await initDatabase(db);
   }
   return db;
@@ -121,6 +121,27 @@ export async function addFoodEntry(entry) {
 export async function deleteFoodEntry(id) {
   const database = await getDb();
   await database.runAsync('DELETE FROM food_log WHERE id = ?', [id]);
+}
+
+const NUTRIENT_FIELDS = [
+  'kcal', 'protein', 'fat', 'carbs', 'sugar', 'fiber', 'salt', 'sodium',
+  'saturated_fat', 'vitamin_a', 'vitamin_c', 'vitamin_d', 'calcium', 'iron', 'potassium',
+];
+
+// Rescales all stored nutrient values proportionally to a new amount in grams.
+export async function updateFoodEntryAmount(id, newAmount) {
+  const database = await getDb();
+  const row = await database.getFirstAsync('SELECT * FROM food_log WHERE id = ?', [id]);
+  if (!row || !row.amount_g || row.amount_g <= 0 || newAmount <= 0) return;
+
+  const factor = newAmount / row.amount_g;
+  const scaled = NUTRIENT_FIELDS.map((f) => (row[f] != null ? row[f] * factor : null));
+  const setClause = NUTRIENT_FIELDS.map((f) => `${f} = ?`).join(', ');
+
+  await database.runAsync(
+    `UPDATE food_log SET amount_g = ?, ${setClause} WHERE id = ?`,
+    [newAmount, ...scaled, id]
+  );
 }
 
 // weight_log queries

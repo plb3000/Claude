@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "MacroMind",
-    "slug": "MacroMind",
-    "version": "1.1.0",
+    "name": "Tracc",
+    "slug": "Tracc",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
