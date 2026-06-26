@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "MacroMind",
+    "slug": "MacroMind",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Die Kamera wird zum Scannen von Barcodes auf Lebensmittelverpackungen verwendet."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F0F0F",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Die Kamera wird zum Scannen von Barcodes auf Lebensmittelverpackungen verwendet."
+        }
+      ],
+      "expo-sqlite"
+    ]
+  }
+}
