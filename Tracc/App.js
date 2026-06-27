@@ -4,9 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from './constants/colors';
 import TodayScreen from './app/TodayScreen';
 import SearchScreen from './app/SearchScreen';
+import MonthScreen from './app/MonthScreen';
 import WeightScreen from './app/WeightScreen';
 import SettingsScreen from './app/SettingsScreen';
 
@@ -15,14 +17,14 @@ const Tab = createBottomTabNavigator();
 function TabIcon({ label, focused }) {
   return (
     <Text style={{ fontSize: 20 }}>
-      {label === 'Today' ? '📋' : label === 'Search' ? '🔍' : label === 'Weight' ? '⚖️' : '⚙️'}
+      {label === 'Today' ? '📋' : label === 'Search' ? '🔍' : label === 'Month' ? '📅' : label === 'Weight' ? '⚖️' : '⚙️'}
     </Text>
   );
 }
 
-export default function App() {
+function AppNavigator() {
+  const insets = useSafeAreaInsets();
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
     <NavigationContainer>
       <StatusBar style="light" backgroundColor={Colors.background} />
       <Tab.Navigator
@@ -31,8 +33,8 @@ export default function App() {
             backgroundColor: Colors.surface,
             borderTopColor: Colors.border,
             borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
+            height: 60 + insets.bottom,
+            paddingBottom: 8 + insets.bottom,
           },
           tabBarActiveTintColor: Colors.primary,
           tabBarInactiveTintColor: Colors.textSecondary,
@@ -69,6 +71,14 @@ export default function App() {
           }}
         />
         <Tab.Screen
+          name="Month"
+          component={MonthScreen}
+          options={{
+            title: 'Monat',
+            tabBarIcon: ({ focused }) => <TabIcon label="Month" focused={focused} />,
+          }}
+        />
+        <Tab.Screen
           name="Weight"
           component={WeightScreen}
           options={{
@@ -86,6 +96,15 @@ export default function App() {
         />
       </Tab.Navigator>
     </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppNavigator />
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

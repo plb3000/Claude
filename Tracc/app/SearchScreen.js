@@ -9,8 +9,38 @@ import { Colors } from '../constants/colors';
 import { MEAL_LABELS, MEALS } from '../constants/units';
 import { fetchProductByBarcode, searchProducts } from '../api/openfoodfacts';
 import { addFoodEntry, getLocalDateString } from '../db/database';
+import RecentList from './RecentList';
+import MealsList from './MealsList';
+import MealBuilder from './MealBuilder';
 
 const REQUIRED_FIELDS = ['kcal', 'protein', 'fat', 'carbs'];
+
+// Wandelt einen gespeicherten Tagebuch-Eintrag (Nährwerte für amount_g) zurück
+// in ein produkt-ähnliches Objekt mit per-100g-Werten, damit das Add-Formular
+// es erneut skalieren kann.
+const NUTRIMENT_KEYS = {
+  kcal: 'energy-kcal_100g', protein: 'proteins_100g', fat: 'fat_100g', carbs: 'carbohydrates_100g',
+  sugar: 'sugars_100g', fiber: 'fiber_100g', salt: 'salt_100g', sodium: 'sodium_100g',
+  saturated_fat: 'saturated-fat_100g', vitamin_a: 'vitamin-a_100g', vitamin_c: 'vitamin-c_100g',
+  vitamin_d: 'vitamin-d_100g', calcium: 'calcium_100g', iron: 'iron_100g', potassium: 'potassium_100g',
+};
+
+function entryToProduct(row) {
+  const a = row.amount_g || 100;
+  const nutriments = {};
+  for (const [field, key] of Object.entries(NUTRIMENT_KEYS)) {
+    nutriments[key] = row[field] != null && a > 0 ? (row[field] / a) * 100 : null;
+  }
+  return { product_name: row.product_name, brand: row.brand, nutriments };
+}
+
+const SEGMENTS = [
+  { key: 'search', label: 'Suche' },
+  { key: 'scanner', label: 'Scanner' },
+  { key: 'zuletzt', label: 'Zuletzt' },
+  { key: 'mahlzeiten', label: 'Mahlzeiten' },
+  { key: 'manual', label: 'Manuell' },
+];
 
 function scaleNutrients(nutriments, amount_g) {
   const factor = amount_g / 100;
@@ -34,8 +64,8 @@ function scaleNutrients(nutriments, amount_g) {
   };
 }
 
-function ProductAddForm({ product, initialMeal, targetDate, onAdded, onCancel }) {
-  const [amount, setAmount] = useState('100');
+function ProductAddForm({ product, initialMeal, initialAmount, targetDate, onAdded, onCancel }) {
+  const [amount, setAmount] = useState(initialAmount ? String(initialAmount) : '100');
   const [meal, setMeal] = useState(initialMeal || 'breakfast');
   const [manualFields, setManualFields] = useState({});
   const [adding, setAdding] = useState(false);
@@ -67,6 +97,7 @@ function ProductAddForm({ product, initialMeal, targetDate, onAdded, onCancel })
         ),
       };
       await addFoodEntry(entry);
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onAdded();
     } catch (e) {
       Alert.alert('Fehler', 'Eintrag konnte nicht gespeichert werden.');
@@ -188,10 +219,12 @@ export default function SearchScreen({ navigation, route }) {
   const initialMeal = route.params?.meal || 'breakfast';
   const targetDate = route.params?.date || getLocalDateString();
   const [permission, requestPermission] = useCameraPermissions();
-  const [mode, setMode] = useState('scanner'); // 'scanner' | 'search' | 'manual'
+  // mode: 'search' | 'scanner' | 'zuletzt' | 'mahlzeiten' | 'manual' | 'form' | 'mealbuilder'
+  const [mode, setMode] = useState('search');
   const [scanning, setScanning] = useState(true);
   const [loading, setLoading] = useState(false);
   const [product, setProduct] = useState(null);
+  const [reAddAmount, setReAddAmount] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -238,17 +271,45 @@ export default function SearchScreen({ navigation, route }) {
 
   function handleAdded() {
     setProduct(null);
+    setReAddAmount(null);
     setNotFound(false);
-    setMode('scanner');
+    setMode('search');
     setScanning(true);
-    navigation.navigate('Today');
+    navigation.navigate('Today', { date: targetDate });
   }
 
   function handleCancel() {
     setProduct(null);
+    setReAddAmount(null);
     setNotFound(false);
-    setMode('scanner');
+    setMode('search');
     setScanning(true);
+  }
+
+  function handlePickRecent(row) {
+    setProduct(entryToProduct(row));
+    setReAddAmount(row.amount_g);
+    setMode('form');
+  }
+
+  function selectSegment(key) {
+    setNotFound(false);
+    if (key === 'scanner') setScanning(true);
+    setMode(key);
+  }
+
+  if (mode === 'mealbuilder') {
+    return (
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <MealBuilder
+          onSaved={() => setMode('mahlzeiten')}
+          onCancel={() => setMode('mahlzeiten')}
+        />
+      </KeyboardAvoidingView>
+    );
   }
 
   if (mode === 'form' || mode === 'manual') {
@@ -260,6 +321,7 @@ export default function SearchScreen({ navigation, route }) {
         <ProductAddForm
           product={mode === 'manual' ? null : product}
           initialMeal={initialMeal}
+          initialAmount={mode === 'manual' ? null : reAddAmount}
           targetDate={targetDate}
           onAdded={handleAdded}
           onCancel={handleCancel}
@@ -271,24 +333,15 @@ export default function SearchScreen({ navigation, route }) {
   return (
     <View style={styles.screen}>
       <View style={styles.toggleRow}>
-        <TouchableOpacity
-          style={[styles.toggleBtn, mode === 'scanner' && styles.toggleActive]}
-          onPress={() => { setMode('scanner'); setScanning(true); setNotFound(false); }}
-        >
-          <Text style={[styles.toggleText, mode === 'scanner' && styles.toggleTextActive]}>Scanner</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleBtn, mode === 'search' && styles.toggleActive]}
-          onPress={() => setMode('search')}
-        >
-          <Text style={[styles.toggleText, mode === 'search' && styles.toggleTextActive]}>Suche</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.toggleBtn, mode === 'manual' && styles.toggleActive]}
-          onPress={() => setMode('manual')}
-        >
-          <Text style={[styles.toggleText, mode === 'manual' && styles.toggleTextActive]}>Manuell</Text>
-        </TouchableOpacity>
+        {SEGMENTS.map((s) => (
+          <TouchableOpacity
+            key={s.key}
+            style={[styles.segment, mode === s.key && styles.toggleActive]}
+            onPress={() => selectSegment(s.key)}
+          >
+            <Text style={[styles.toggleText, mode === s.key && styles.toggleTextActive]}>{s.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {mode === 'scanner' && (
@@ -357,7 +410,7 @@ export default function SearchScreen({ navigation, route }) {
               <TouchableOpacity
                 key={item.code || idx}
                 style={styles.resultCard}
-                onPress={() => { setProduct(item); setMode('form'); }}
+                onPress={() => { setProduct(item); setReAddAmount(null); setMode('form'); }}
               >
                 <Text style={styles.resultName}>{item.product_name || '(kein Name)'}</Text>
                 {item.brand ? <Text style={styles.resultBrand}>{item.brand}</Text> : null}
@@ -368,6 +421,17 @@ export default function SearchScreen({ navigation, route }) {
             ))}
           </ScrollView>
         </View>
+      )}
+
+      {mode === 'zuletzt' && <RecentList onPick={handlePickRecent} />}
+
+      {mode === 'mahlzeiten' && (
+        <MealsList
+          onCreate={() => setMode('mealbuilder')}
+          targetMeal={initialMeal}
+          targetDate={targetDate}
+          onAdded={handleAdded}
+        />
       )}
     </View>
   );
@@ -380,8 +444,22 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     flexDirection: 'row',
-    padding: 16,
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
     gap: 8,
+  },
+  segment: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 88,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: 'center',
   },
   toggleBtn: {
     flex: 1,

@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  RefreshControl, StatusBar, Modal, TextInput,
+  RefreshControl, StatusBar, Modal, TextInput, Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { Colors } from '../constants/colors';
 import { MEAL_LABELS, MEALS } from '../constants/units';
 import {
@@ -33,9 +34,42 @@ function sumMacro(items, key) {
   return items.reduce((acc, item) => acc + (item[key] ?? 0), 0);
 }
 
-export default function TodayScreen({ navigation }) {
+function AddButton({ onPress }) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  function pressIn() {
+    Animated.spring(scale, { toValue: 0.82, useNativeDriver: true, speed: 50 }).start();
+  }
+  function pressOut() {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 4 }).start();
+  }
+  function handlePress() {
+    Haptics.selectionAsync();
+    onPress();
+  }
+
+  return (
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={handlePress}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+    >
+      <Animated.View style={[styles.addBtn, { transform: [{ scale }] }]}>
+        <Text style={styles.addBtnText}>+</Text>
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
+export default function TodayScreen({ navigation, route }) {
   const today = getLocalDateString();
   const [selectedDate, setSelectedDate] = useState(today);
+
+  // Sprung zu einem bestimmten Tag (z. B. aus der Monatsansicht)
+  useEffect(() => {
+    if (route?.params?.date) setSelectedDate(route.params.date);
+  }, [route?.params?.date]);
   const [entries, setEntries] = useState([]);
   const [goals, setGoals] = useState({ kcal: 2000, protein_g: 150, fat_g: 70, carbs_g: 250 });
   const [refreshing, setRefreshing] = useState(false);
@@ -69,6 +103,7 @@ export default function TodayScreen({ navigation }) {
     const val = parseFloat(String(editAmount).replace(',', '.'));
     if (editItem && !isNaN(val) && val > 0) {
       await updateFoodEntryAmount(editItem.id, Math.round(val));
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       await load(selectedDate);
     }
     setEditItem(null);
@@ -80,7 +115,9 @@ export default function TodayScreen({ navigation }) {
   }
 
   const isToday = selectedDate === today;
-  const isFuture = selectedDate >= today;
+  // Vorausplanung erlaubt – nur bei mehr als 1 Jahr in der Zukunft begrenzen.
+  const maxDate = shiftDate(today, 365);
+  const atMaxFuture = selectedDate >= maxDate;
 
   const totalKcal = sumMacro(entries, 'kcal');
   const totalProtein = sumMacro(entries, 'protein');
@@ -126,11 +163,11 @@ export default function TodayScreen({ navigation }) {
             {!isToday && <Text style={styles.dateReset}>Zu heute springen</Text>}
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.dateArrow, isFuture && styles.dateArrowDisabled]}
+            style={[styles.dateArrow, atMaxFuture && styles.dateArrowDisabled]}
             onPress={() => setSelectedDate((d) => shiftDate(d, 1))}
-            disabled={isFuture}
+            disabled={atMaxFuture}
           >
-            <Text style={[styles.dateArrowText, isFuture && styles.dateArrowTextDisabled]}>›</Text>
+            <Text style={[styles.dateArrowText, atMaxFuture && styles.dateArrowTextDisabled]}>›</Text>
           </TouchableOpacity>
         </View>
 
@@ -161,12 +198,9 @@ export default function TodayScreen({ navigation }) {
                     <Text style={styles.mealKcal}>{Math.round(mealKcal)} kcal</Text>
                   )}
                 </View>
-                <TouchableOpacity
-                  style={styles.addBtn}
+                <AddButton
                   onPress={() => navigation.navigate('Search', { meal, date: selectedDate })}
-                >
-                  <Text style={styles.addBtnText}>+</Text>
-                </TouchableOpacity>
+                />
               </View>
               {mealEntries.length === 0 ? (
                 <Text style={styles.emptyMeal}>Noch nichts eingetragen</Text>

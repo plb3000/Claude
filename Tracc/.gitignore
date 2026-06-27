@@ -36,6 +36,18 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
+# generated native folders (iOS wird via prebuild neu erzeugt)
 /ios
-/android
+
+# Android: Quellen & Konfiguration behalten (Gradle-Pin, Icons, debug.keystore),
+# damit das Projekt auf einem anderen Gerät direkt baut. Nur Build-Artefakte ignorieren.
+android/build/
+android/.gradle/
+android/.kotlin/
+android/.cxx/
+android/app/build/
+android/app/.cxx/
+android/local.properties
+
+# IDE
+.idea/

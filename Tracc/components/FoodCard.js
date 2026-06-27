@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, Animated } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
 import { Colors } from '../constants/colors';
 import MicroDetail from './MicroDetail';
 
@@ -8,10 +9,27 @@ export default function FoodCard({ item, onDelete, onEdit }) {
   const [expanded, setExpanded] = useState(false);
   const swipeRef = useRef(null);
 
+  const appear = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(appear, {
+      toValue: 1,
+      duration: 280,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
   function confirmDelete() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert('Eintrag löschen', `"${item.product_name}" entfernen?`, [
       { text: 'Abbrechen', style: 'cancel', onPress: () => swipeRef.current?.close() },
-      { text: 'Löschen', style: 'destructive', onPress: () => onDelete(item.id) },
+      {
+        text: 'Löschen',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          onDelete(item.id);
+        },
+      },
     ]);
   }
 
@@ -55,7 +73,22 @@ export default function FoodCard({ item, onDelete, onEdit }) {
       overshootLeft={false}
       containerStyle={styles.swipeContainer}
     >
-      <View style={styles.card}>
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            opacity: appear,
+            transform: [
+              {
+                translateY: appear.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [12, 0],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <TouchableOpacity onPress={() => setExpanded((v) => !v)} activeOpacity={0.7}>
           <View style={styles.row}>
             <View style={styles.info}>
@@ -72,7 +105,7 @@ export default function FoodCard({ item, onDelete, onEdit }) {
           </View>
         </TouchableOpacity>
         {expanded && <MicroDetail item={item} />}
-      </View>
+      </Animated.View>
     </Swipeable>
   );
 }

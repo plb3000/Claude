@@ -1,7 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Colors } from '../constants/colors';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function KcalRing({ consumed, goal }) {
   const size = 160;
@@ -10,10 +12,23 @@ export default function KcalRing({ consumed, goal }) {
   const circumference = 2 * Math.PI * radius;
   const ratio = goal > 0 ? consumed / goal : 0;
   const progress = Math.min(ratio, 1);
-  const strokeDashoffset = circumference * (1 - progress);
 
   const color =
     ratio > 1 ? Colors.danger : ratio > 0.85 ? Colors.warning : Colors.primary;
+
+  const anim = useRef(new Animated.Value(progress)).current;
+  useEffect(() => {
+    Animated.timing(anim, {
+      toValue: progress,
+      duration: 700,
+      useNativeDriver: false,
+    }).start();
+  }, [progress]);
+
+  const strokeDashoffset = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
 
   return (
     <View style={styles.container}>
@@ -26,7 +41,7 @@ export default function KcalRing({ consumed, goal }) {
           strokeWidth={strokeWidth}
           fill="none"
         />
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}

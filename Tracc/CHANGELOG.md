@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.3.0] – 2026-06-26
+
+### Hinzugefügt
+- **Mahlzeiten**: Mehrere Zutaten zu einer benannten Mahlzeit kombinieren und dauerhaft speichern (neue Tabellen `meals` / `meal_ingredients`). Zutaten per Suche oder manuell hinzufügen, Mengen je Zutat anpassbar, Live-Gesamtsumme.
+- **Portionsweise hinzufügen**: Gespeicherte Mahlzeiten mit Faktor zum Tagebuch eintragen (Presets 1× / ½ / ⅓ / ¼ / 0,2× oder eigener Faktor) – ideal für Meal-Prep über mehrere Tage.
+- **„Zuletzt"-Segment** im Hinzufügen-Tab: die letzten 100 verwendeten Lebensmittel (offline aus SQLite), antippen zum erneuten Eintragen mit übernommener Menge.
+- **Monatsansicht** (neuer Tab 📅): Kalender mit grünen (Ziel eingehalten), gelben (überschritten) und grauen (nichts getrackt) Tagen, Monatsstatistik, Tippen springt zum Tag.
+- **Animationen & Haptik**: animierter Kalorienring & Makrobalken, Einblenden neuer Karten, Press-Effekt am „+", haptisches Feedback bei Hinzufügen/Speichern/Löschen.
+- **Vorausplanung**: zukünftige Tage (bis 1 Jahr) im Heute-Tab eintragbar.
+
+### Geändert
+- Hinzufügen-Tab in Segmente gegliedert: Suche · Scanner · Zuletzt · Mahlzeiten · Manuell (Standard jetzt „Suche").
+
+### Behoben
+- **Produktsuche** auf den neuen Dienst `search.openfoodfacts.org` umgestellt (alter `cgi/search.pl` lieferte 503) – funktioniert zuverlässig beim ersten Versuch; robustes `fetch` mit Timeout & Retry.
+- **Race Condition** bei der DB-Initialisierung behoben (`UNIQUE constraint failed: user_goals.id`) – Init als einmaliges Promise gecacht, `INSERT OR IGNORE`.
+- Untere Tab-Leiste respektiert jetzt die Android-Navigationsleiste (Safe-Area-Inset).
+
 ## [1.2.0] – 2026-06-26
 
 ### Geändert
